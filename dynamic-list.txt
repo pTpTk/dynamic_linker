@@ -1,0 +1,3 @@
+{
+    RandomSymbol1234;
+};
