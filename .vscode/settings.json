@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "*.dump": "asm-intel-x86-generic",
+        "elf.h": "c"
+    }
+}

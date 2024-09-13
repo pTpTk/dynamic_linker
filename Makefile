@@ -1,3 +1,5 @@
-gcc -Wl,-soname,libloader.so -shared -nodefaultlibs -nostartfiles -o libloader.so -Wl,--dynamic-list=dynamic-list.txt crt.c main.c libc_nonshared.a
+all:
+	gcc -Wl,-soname,libloader.so -shared -static -nodefaultlibs -nostartfiles -o libloader.so -Wl,--dynamic-list=dynamic-list.txt crt.c main.c
 
-gcc -Wl,-dynamic-linker,libloader.so -nostartfiles -nodefaultlibs -o test test.s
+test:
+	gcc -Wl,-dynamic-linker,libloader.so -Wl,-z,lazy -nostartfiles -nodefaultlibs -o test test.o libputchar.so
