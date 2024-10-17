@@ -1,8 +1,4 @@
-#include <stdlib.h>
-#include <stddef.h>
-#include <fcntl.h>
-#include <elf.h>
-
+#include "typedef.h"
 #include "elf.h"
 #include "syscall.c"
 #include "util.c"
@@ -51,7 +47,7 @@ int main(int argc, char ** argv, char ** envp) {
             case 0x02: // DYNAMIC
                 char* a = "DYNAMIC\n";
                 write2(1, a, 8);
-                dynamic_section_addr = ph_ptr->p_offset;
+                dynamic_section_addr = (void *)ph_ptr->p_offset;
         }
     }
 
@@ -67,7 +63,7 @@ int main(int argc, char ** argv, char ** envp) {
         switch(dyn[i].d_tag) {
             case DT_STRTAB:
             {
-                strtab = (dyn[i].d_un.d_ptr);
+                strtab = (void *)(dyn[i].d_un.d_ptr);
                 write2(1, "strtab: ", 8);
                 printAddr(strtab);
                 write2(1, "\n", 1);
@@ -75,7 +71,7 @@ int main(int argc, char ** argv, char ** envp) {
             }
             case DT_NEEDED:
             {
-                needed_name = (dyn[i].d_un.d_ptr);
+                needed_name = (void *)(dyn[i].d_un.d_ptr);
                 write2(1, "needed: ", 8);
                 printAddr(needed_name);
                 write2(1, "\n", 1);
@@ -85,7 +81,7 @@ int main(int argc, char ** argv, char ** envp) {
     }
 
     write2(1, "needed: ", 8);
-    needed_name += (unsigned long long)base + (unsigned long long)strtab;
+    needed_name += (size_t)base + (size_t)strtab;
     printAddr(needed_name);
     write2(1, "\n", 1);
     write2(1, needed_name, 20);
@@ -114,26 +110,3 @@ int main(int argc, char ** argv, char ** envp) {
         :: [sp]"r"(sp - 1)
     );
 }
-
-// inline int _start_c(size_t * sp) {
-//     int argc = *sp;
-//     char ** argv = (char **)(sp + 1);
-//     char ** envp = &argv[argc + 1];
-
-//     return main(argc, argv, envp);
-// }
-
-// __attribute__((naked, noreturn))
-// void _start() {
-//     asm(
-//         "endbr64\n\t"
-//         "xor %%rbp, %%rbp\n\t"
-//         "mov %%rsp, %%rdi\n\t"
-//         "andq $-16, %%rsp\n\t"
-//         "call _start_c\n\t"
-//         "movl %%eax, %%edi\n\t"
-//         "movl $60, %%eax\n\t"
-//         "syscall\n\t"
-//         :::
-//     );
-// }

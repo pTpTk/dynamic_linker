@@ -8,9 +8,11 @@ break; \
 }
 
 
-void printAddr(unsigned long long addr)
+void printAddr(void * _addr)
 {
     write2(1, "0x", 2);
+
+    uint64_t addr = (uint64_t)_addr;
 
     for(int i = 17; i > 1; --i) {
         int addr_end = addr % 16;
