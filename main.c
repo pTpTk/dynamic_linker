@@ -5,12 +5,14 @@
 
 #include "elf.h"
 #include "syscall.c"
+#include "util.c"
 
 int main(int argc, char ** argv, char ** envp) {
     size_t * sp = (size_t *)(argv - 1);
     size_t * auxvals = (size_t *)envp;
     while (*auxvals++);
 
+    void * base = NULL;
     void * entry = NULL;
     PHDR * phdr = NULL;
     for (size_t i = 0; auxvals[i] != AT_NULL; i += 2) {
@@ -18,9 +20,16 @@ int main(int argc, char ** argv, char ** envp) {
         switch (auxvals[i]) {
             case AT_ENTRY:
                 entry = (void *)val;
+                write2(1, "entry: ", 7);
+                printAddr(entry);
                 break;
             case AT_PHDR:
                 phdr = (PHDR *)val;
+                base = (void *)(val & 0xFFFFFFFFFFFFFF00);
+                write2(1, "phdr: ", 6);
+                printAddr(phdr);
+                write2(1, "base: ", 6);
+                printAddr(base);
                 break;
         }
     }
@@ -29,6 +38,7 @@ int main(int argc, char ** argv, char ** envp) {
     PHDR * ph_ptr = phdr;
     int ph_size = phdr->p_memsz;
     int ph_count = ph_size / 0x38;
+    void * dynamic_section_addr = NULL;
     for(int i = 1; i < ph_count; ++i) {
         ++ph_ptr;
         switch(ph_ptr->p_type) {
@@ -39,16 +49,47 @@ int main(int argc, char ** argv, char ** envp) {
                 write2(1, "LOAD\n", 5);
                 break;
             case 0x02: // DYNAMIC
-                write2(1, "DYNAMIC\n", 8);
+                char* a = "DYNAMIC\n";
+                write2(1, a, 8);
+                dynamic_section_addr = ph_ptr->p_offset;
         }
     }
 
+    dynamic_section_addr += (unsigned long long)base;
+    write2(1, "dynamic section addr: ", 22);
+    printAddr(dynamic_section_addr);
+    
+    Dynamic * dyn = (Dynamic *)dynamic_section_addr;
+    void * strtab = NULL;
+    void * needed_name = NULL;
 
-    int fd = open2("foo.txt", O_WRONLY | O_CREAT | O_TRUNC, 0644); 
-    
-    int sz = write2(fd, "hello geeks\n", 12); 
-    
-    close2(fd); 
+    for(int i = 0; dyn[i].d_tag != DT_NULL; ++i) {
+        switch(dyn[i].d_tag) {
+            case DT_STRTAB:
+            {
+                strtab = (dyn[i].d_un.d_ptr);
+                write2(1, "strtab: ", 8);
+                printAddr(strtab);
+                write2(1, "\n", 1);
+                break;
+            }
+            case DT_NEEDED:
+            {
+                needed_name = (dyn[i].d_un.d_ptr);
+                write2(1, "needed: ", 8);
+                printAddr(needed_name);
+                write2(1, "\n", 1);
+                break;
+            }
+        }
+    }
+
+    write2(1, "needed: ", 8);
+    needed_name += (unsigned long long)base + (unsigned long long)strtab;
+    printAddr(needed_name);
+    write2(1, "\n", 1);
+    write2(1, needed_name, 20);
+    write2(1, "\n", 1);
 
     sp[-1] = (size_t)entry;
 

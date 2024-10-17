@@ -13,3 +13,11 @@ typedef struct
     uint64_t p_memsz;           /* Segment size in memory */
     uint64_t p_align;           /* Segment alignment */
 } PHDR;
+
+typedef struct {
+  Elf64_Sxword d_tag;
+  union {
+      Elf64_Xword d_val;
+      Elf64_Addr d_ptr;
+  } d_un;
+} Dynamic;
