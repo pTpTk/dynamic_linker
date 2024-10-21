@@ -14,7 +14,10 @@ size_t __syscall(size_t nr, size_t a0, size_t a1, size_t a2, size_t a3, size_t a
     return ret;
 }
 
-void * mmap(void *addr, size_t len, int prot, int flags, int fd, unsigned int offset) {
+#define PROT_READ      1
+#define MAP_PRIVATE    0x02
+
+void * mmap2(void *addr, size_t len, int prot, int flags, int fd, unsigned int offset) {
     return (void *) __syscall(9, (size_t)addr, len, prot, flags, fd, offset);
 }
 
@@ -28,4 +31,8 @@ int write2(int fd, const void * buf, size_t nbytes) {
 
 int close2(int fd) {
     __syscall(3, fd, 0, 0, 0, 0, 0);
+}
+
+int64_t lseek2 (int fd, int64_t offset, int whence) {
+    __syscall(8, fd, offset, whence, 0, 0, 0);
 }

@@ -1,3 +1,7 @@
+#pragma once
+
+#include "typedef.h"
+
 int write2(int fd, const void * buf, size_t nbytes);
 
 #define CASE(X, Y) \

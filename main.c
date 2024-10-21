@@ -1,7 +1,7 @@
 #include "typedef.h"
 #include "elf.h"
 #include "syscall.c"
-#include "util.c"
+#include "util.h"
 
 int main(int argc, char ** argv, char ** envp) {
     size_t * sp = (size_t *)(argv - 1);
@@ -87,6 +87,20 @@ int main(int argc, char ** argv, char ** envp) {
     write2(1, needed_name, 20);
     write2(1, "\n", 1);
 
+    // library is in the same dir as the exe for simplicity
+    int fd = open2(needed_name, 0, 0);
+    size_t size = lseek2(fd, 0, 2);
+    write2(1, "lib size is ", 12);
+    printAddr((void *)size);
+
+    void * lib = mmap2(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
+    close2(fd);
+
+    char * putchar = (char *)lib + 0x292;
+    write2(1, putchar, 8);
+    write2(1, "\n", 1);
+
+    write2(1, "here\n", 5);
     sp[-1] = (size_t)entry;
 
     asm(
