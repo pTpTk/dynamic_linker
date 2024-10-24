@@ -3,8 +3,19 @@
 #include "syscall.c"
 #include "util.h"
 
-void hello(int) {
-    write2(1, "Hello world\n", 12);
+extern void _runtime_resolve();
+
+void runtime_resolve(void * lib, int64_t index) {
+    write2(1, "HERE\n", 5);
+    write2(1, "lib @ ", 6);
+    printAddr(lib);
+    write2(1, "\nindex ", 7);
+    printAddr((void *)index);
+    write2(1, "\n", 1);
+}
+
+void hello() {
+    write2(1, "heeello\n", 8);
 }
 
 int main(int argc, char ** argv, char ** envp) {
@@ -63,6 +74,7 @@ int main(int argc, char ** argv, char ** envp) {
     void * strtab = NULL;
     void * needed_name = NULL;
     void * pltgot = NULL;
+    int64_t plt_rel_count = 0;
 
     for(int i = 0; dyn[i].d_tag != DT_NULL; ++i) {
         switch(dyn[i].d_tag) {
@@ -87,6 +99,11 @@ int main(int argc, char ** argv, char ** envp) {
                 pltgot = (uint64_t *)(dyn[i].d_un.d_ptr);
                 break;
             }
+            case DT_PLTRELSZ:
+            {
+                plt_rel_count = (int64_t)(dyn[i].d_un.d_val) / 24;
+                break;
+            }
         }
     }
 
@@ -106,14 +123,11 @@ int main(int argc, char ** argv, char ** envp) {
     void * lib = mmap2(NULL, size, PROT_READ | PROT_EXEC, MAP_PRIVATE, fd, 0);
     close2(fd);
 
-    char * putchar = (char *)lib + 0x1000;
-    write2(1, "putchar: ", 9);
-    printAddr(putchar);
+    write2(1, "lib: ", 5);
+    printAddr(lib);
     write2(1, "\n", 1);
 
-    void (*func)();
-    func = lib + 0x106C;
-    *func;
+    uint64_t putchar = (uint64_t)lib + 0x1000;
 
     pltgot += (size_t)base;
     write2(1, "pltgot addr: ", 13);
@@ -121,11 +135,14 @@ int main(int argc, char ** argv, char ** envp) {
     write2(1, "\n", 1);
 
     uint64_t * pltgot_entry = pltgot;
-    pltgot_entry[3] = (uint64_t)hello;
-    pltgot_entry[4] = (uint64_t)putchar;
-    pltgot_entry[5] = (uint64_t)putchar;
+    pltgot_entry[1] = (uint64_t)lib;
+    pltgot_entry[2] = (uint64_t)_runtime_resolve;
 
-    // write2(1, "here\n", 5);
+    // adjust temp got.plt entries
+    for(int i = 0; i < plt_rel_count; ++i) {
+        pltgot_entry[i+3] += (uint64_t)base;
+    }
+
     sp[-1] = (size_t)entry;
 
     asm(
@@ -149,7 +166,5 @@ int main(int argc, char ** argv, char ** envp) {
         :: [sp]"r"(sp - 1)
     );
 
-    write2(1, "here\n", 5);
-    
     asm("ret\n\t");
 }

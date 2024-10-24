@@ -12,6 +12,7 @@
 
 #define DT_NULL     0       /* Marks end of dynamic section */
 #define DT_NEEDED   1       /* Name of needed library */
+#define DT_PLTRELSZ	2       /* Size in bytes of PLT relocs */
 #define DT_PLTGOT   3       /* Processor defined value */
 #define DT_STRTAB   5       /* Address of string table */
 
