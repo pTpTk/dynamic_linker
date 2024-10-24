@@ -3,6 +3,10 @@
 #include "syscall.c"
 #include "util.h"
 
+void hello(int) {
+    write2(1, "Hello world\n", 12);
+}
+
 int main(int argc, char ** argv, char ** envp) {
     size_t * sp = (size_t *)(argv - 1);
     size_t * auxvals = (size_t *)envp;
@@ -58,6 +62,7 @@ int main(int argc, char ** argv, char ** envp) {
     Dynamic * dyn = (Dynamic *)dynamic_section_addr;
     void * strtab = NULL;
     void * needed_name = NULL;
+    void * pltgot = NULL;
 
     for(int i = 0; dyn[i].d_tag != DT_NULL; ++i) {
         switch(dyn[i].d_tag) {
@@ -77,6 +82,11 @@ int main(int argc, char ** argv, char ** envp) {
                 write2(1, "\n", 1);
                 break;
             }
+            case DT_PLTGOT:
+            {
+                pltgot = (uint64_t *)(dyn[i].d_un.d_ptr);
+                break;
+            }
         }
     }
 
@@ -93,14 +103,29 @@ int main(int argc, char ** argv, char ** envp) {
     write2(1, "lib size is ", 12);
     printAddr((void *)size);
 
-    void * lib = mmap2(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
+    void * lib = mmap2(NULL, size, PROT_READ | PROT_EXEC, MAP_PRIVATE, fd, 0);
     close2(fd);
 
-    char * putchar = (char *)lib + 0x292;
-    write2(1, putchar, 8);
+    char * putchar = (char *)lib + 0x1000;
+    write2(1, "putchar: ", 9);
+    printAddr(putchar);
     write2(1, "\n", 1);
 
-    write2(1, "here\n", 5);
+    void (*func)();
+    func = lib + 0x106C;
+    *func;
+
+    pltgot += (size_t)base;
+    write2(1, "pltgot addr: ", 13);
+    printAddr(pltgot);
+    write2(1, "\n", 1);
+
+    uint64_t * pltgot_entry = pltgot;
+    pltgot_entry[3] = (uint64_t)hello;
+    pltgot_entry[4] = (uint64_t)putchar;
+    pltgot_entry[5] = (uint64_t)putchar;
+
+    // write2(1, "here\n", 5);
     sp[-1] = (size_t)entry;
 
     asm(
@@ -120,7 +145,11 @@ int main(int argc, char ** argv, char ** envp) {
         "mov $0, %%r13\n\t"
         "mov $0, %%r14\n\t"
         "mov $0, %%r15\n\t"
-        "ret\n\t"
+        // "ret\n\t"
         :: [sp]"r"(sp - 1)
     );
+
+    write2(1, "here\n", 5);
+    
+    asm("ret\n\t");
 }

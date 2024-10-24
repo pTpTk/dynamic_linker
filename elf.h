@@ -2,17 +2,18 @@
 
 #include "typedef.h"
 
-#define AT_NULL		0		/* End of vector */
-#define AT_PHDR		3		/* Program headers for program */
-#define AT_ENTRY	9		/* Entry point of program */
+#define AT_NULL     0       /* End of vector */
+#define AT_PHDR     3       /* Program headers for program */
+#define AT_ENTRY    9       /* Entry point of program */
 
-#define PT_LOAD		1		/* Loadable program segment */
-#define PT_DYNAMIC	2		/* Dynamic linking information */
-#define PT_INTERP	3		/* Program interpreter */
+#define PT_LOAD     1       /* Loadable program segment */
+#define PT_DYNAMIC  2       /* Dynamic linking information */
+#define PT_INTERP   3       /* Program interpreter */
 
-#define DT_NULL		0		/* Marks end of dynamic section */
-#define DT_NEEDED	1		/* Name of needed library */
-#define DT_STRTAB	5		/* Address of string table */
+#define DT_NULL     0       /* Marks end of dynamic section */
+#define DT_NEEDED   1       /* Name of needed library */
+#define DT_PLTGOT   3       /* Processor defined value */
+#define DT_STRTAB   5       /* Address of string table */
 
 typedef struct
 {

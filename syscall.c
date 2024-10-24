@@ -15,6 +15,7 @@ size_t __syscall(size_t nr, size_t a0, size_t a1, size_t a2, size_t a3, size_t a
 }
 
 #define PROT_READ      1
+#define PROT_EXEC      4
 #define MAP_PRIVATE    0x02
 
 void * mmap2(void *addr, size_t len, int prot, int flags, int fd, unsigned int offset) {

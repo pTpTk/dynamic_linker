@@ -52,3 +52,23 @@ putchar3:
     mov %rbp, %rsp
     pop %rbp
     ret
+
+test:
+    push %rbp
+    mov  %rsp, %rbp
+
+    mov $1, %rax
+    mov $1, %rdi
+    mov $72, %rsi
+    mov $1, %rdx
+    syscall
+
+    mov $1, %rax
+    mov $1, %rdi
+    mov $72, %rsi
+    mov $1, %rdx
+    syscall
+
+    mov %rbp, %rsp
+    pop %rbp
+    ret
