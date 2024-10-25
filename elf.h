@@ -56,8 +56,8 @@ typedef struct
 } Sym;
 
 typedef struct {
-    void * r_jmprel;
-    void * r_symtab;
+    Rela * r_jmprel;
+    Sym  * r_symtab;
     void * r_strtab;
     void * r_lib;
 } Resolve;

@@ -6,12 +6,24 @@
 extern void _runtime_resolve();
 
 void runtime_resolve(Resolve * res, int64_t index) {
-    write2(1, "HERE\n", 5);
     write2(1, "lib @ ", 6);
     printAddr(res->r_lib);
     write2(1, "\nindex ", 7);
     printAddr((void *)index);
     write2(1, "\n", 1);
+
+    uint64_t sym_index = res->r_jmprel[index].r_info;
+    sym_index >>= 32;
+    write2(1, "symtab index ", 13);
+    printAddr((void *)index);
+    write2(1, "\n", 1);
+
+    uint32_t st_name = res->r_symtab[sym_index].st_name;
+    void * name = (void *)(res->r_strtab + st_name);
+    write2(1, "sym name ", 9);
+    write2(1, name, 8);
+    write2(1, "\n", 1);
+
 
 }
 
