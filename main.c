@@ -5,13 +5,14 @@
 
 extern void _runtime_resolve();
 
-void runtime_resolve(void * lib, int64_t index) {
+void runtime_resolve(Resolve * res, int64_t index) {
     write2(1, "HERE\n", 5);
     write2(1, "lib @ ", 6);
-    printAddr(lib);
+    printAddr(res->r_lib);
     write2(1, "\nindex ", 7);
     printAddr((void *)index);
     write2(1, "\n", 1);
+
 }
 
 void hello() {
@@ -19,15 +20,15 @@ void hello() {
 }
 
 int main(int argc, char ** argv, char ** envp) {
-    size_t * sp = (size_t *)(argv - 1);
-    size_t * auxvals = (size_t *)envp;
+    uint64_t * sp = (uint64_t *)(argv - 1);
+    uint64_t * auxvals = (uint64_t *)envp;
     while (*auxvals++);
 
     void * base = NULL;
     void * entry = NULL;
     PHDR * phdr = NULL;
-    for (size_t i = 0; auxvals[i] != AT_NULL; i += 2) {
-        size_t val = auxvals[i + 1];
+    for (uint64_t i = 0; auxvals[i] != AT_NULL; i += 2) {
+        uint64_t val = auxvals[i + 1];
         switch (auxvals[i]) {
             case AT_ENTRY:
                 entry = (void *)val;
@@ -75,12 +76,14 @@ int main(int argc, char ** argv, char ** envp) {
     void * needed_name = NULL;
     void * pltgot = NULL;
     int64_t plt_rel_count = 0;
+    void * jmprel = NULL;
+    void * symtab = NULL;
 
     for(int i = 0; dyn[i].d_tag != DT_NULL; ++i) {
         switch(dyn[i].d_tag) {
             case DT_STRTAB:
             {
-                strtab = (void *)(dyn[i].d_un.d_ptr);
+                strtab = (void *)(base + dyn[i].d_un.d_ptr);
                 write2(1, "strtab: ", 8);
                 printAddr(strtab);
                 write2(1, "\n", 1);
@@ -96,7 +99,7 @@ int main(int argc, char ** argv, char ** envp) {
             }
             case DT_PLTGOT:
             {
-                pltgot = (uint64_t *)(dyn[i].d_un.d_ptr);
+                pltgot = (uint64_t *)(base + dyn[i].d_un.d_ptr);
                 break;
             }
             case DT_PLTRELSZ:
@@ -104,11 +107,21 @@ int main(int argc, char ** argv, char ** envp) {
                 plt_rel_count = (int64_t)(dyn[i].d_un.d_val) / 24;
                 break;
             }
+            case DT_SYMTAB:
+            {
+                symtab = (void *)(base + dyn[i].d_un.d_ptr);
+                break;
+            }
+            case DT_JMPREL:
+            {
+                jmprel = (void *)(base + dyn[i].d_un.d_ptr);
+                break;
+            }
         }
     }
 
     write2(1, "needed: ", 8);
-    needed_name += (size_t)base + (size_t)strtab;
+    needed_name += (uint64_t)strtab;
     printAddr(needed_name);
     write2(1, "\n", 1);
     write2(1, needed_name, 20);
@@ -116,7 +129,7 @@ int main(int argc, char ** argv, char ** envp) {
 
     // library is in the same dir as the exe for simplicity
     int fd = open2(needed_name, 0, 0);
-    size_t size = lseek2(fd, 0, 2);
+    uint64_t size = lseek2(fd, 0, 2);
     write2(1, "lib size is ", 12);
     printAddr((void *)size);
 
@@ -127,15 +140,24 @@ int main(int argc, char ** argv, char ** envp) {
     printAddr(lib);
     write2(1, "\n", 1);
 
-    uint64_t putchar = (uint64_t)lib + 0x1000;
-
-    pltgot += (size_t)base;
     write2(1, "pltgot addr: ", 13);
     printAddr(pltgot);
     write2(1, "\n", 1);
 
+    Resolve * res = (Resolve *)mmap2(NULL, 32, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+    write2(1, "res: ", 5);
+    printAddr(res);
+    write2(1, "\n", 1);
+    res->r_jmprel = jmprel;
+    res->r_symtab = symtab;
+    res->r_strtab = strtab;
+    res->r_lib = lib;
+    write2(1, "res->lib: ", 10);
+    printAddr(res->r_lib);
+    write2(1, "\n", 1);
+
     uint64_t * pltgot_entry = pltgot;
-    pltgot_entry[1] = (uint64_t)lib;
+    pltgot_entry[1] = (uint64_t)res;
     pltgot_entry[2] = (uint64_t)_runtime_resolve;
 
     // adjust temp got.plt entries
@@ -143,7 +165,7 @@ int main(int argc, char ** argv, char ** envp) {
         pltgot_entry[i+3] += (uint64_t)base;
     }
 
-    sp[-1] = (size_t)entry;
+    sp[-1] = (uint64_t)entry;
 
     asm(
         "mov %[sp], %%rsp\n\t"

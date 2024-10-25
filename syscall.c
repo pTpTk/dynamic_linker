@@ -14,9 +14,13 @@ size_t __syscall(size_t nr, size_t a0, size_t a1, size_t a2, size_t a3, size_t a
     return ret;
 }
 
-#define PROT_READ      1
-#define PROT_EXEC      4
-#define MAP_PRIVATE    0x02
+#define PROT_READ   0x1		/* Page can be read.  */
+#define PROT_WRITE  0x2		/* Page can be written.  */
+#define PROT_EXEC   0x4		/* Page can be executed.  */
+
+#define MAP_SHARED	0x01    /* Share changes.  */
+#define MAP_PRIVATE	0x02    /* Changes are private.  */
+#define MAP_ANON	0x20	/* Allocated from anonymous virtual memory.  */
 
 void * mmap2(void *addr, size_t len, int prot, int flags, int fd, unsigned int offset) {
     return (void *) __syscall(9, (size_t)addr, len, prot, flags, fd, offset);

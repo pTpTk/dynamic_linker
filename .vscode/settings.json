@@ -2,6 +2,9 @@
     "files.associations": {
         "*.dump": "asm-intel-x86-generic",
         "elf.h": "c",
-        "syscall.h": "c"
+        "syscall.h": "c",
+        "mman.h": "c",
+        "mman-linux.h": "c",
+        "mman-map-flags-generic.h": "c"
     }
 }

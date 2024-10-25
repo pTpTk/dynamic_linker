@@ -15,6 +15,8 @@
 #define DT_PLTRELSZ	2       /* Size in bytes of PLT relocs */
 #define DT_PLTGOT   3       /* Processor defined value */
 #define DT_STRTAB   5       /* Address of string table */
+#define DT_SYMTAB	6       /* Address of symbol table */
+#define DT_JMPREL	23      /* Address of PLT relocs */
 
 typedef struct
 {
@@ -35,3 +37,27 @@ typedef struct {
       uint64_t d_ptr;
   } d_un;
 } Dynamic;
+
+typedef struct
+{
+  uint64_t	r_offset;		/* Address */
+  uint64_t	r_info;			/* Relocation type and symbol index */
+  int64_t	r_addend;       /* Addend */
+} Rela;
+
+typedef struct
+{
+  uint32_t	st_name;        /* Symbol name (string tbl index) */
+  unsigned char	st_info;    /* Symbol type and binding */
+  unsigned char st_other;	/* Symbol visibility */
+  uint16_t	st_shndx;       /* Section index */
+  uint64_t	st_value;       /* Symbol value */
+  uint64_t	st_size;        /* Symbol size */
+} Sym;
+
+typedef struct {
+    void * r_jmprel;
+    void * r_symtab;
+    void * r_strtab;
+    void * r_lib;
+} Resolve;
