@@ -5,7 +5,7 @@
 
 extern void _runtime_resolve();
 
-void runtime_resolve(Resolve * res, int64_t index) {
+uint64_t runtime_resolve(Resolve * res, int64_t index) {
     write2(1, "lib @ ", 6);
     printAddr(res->r_lib);
     write2(1, "\nindex ", 7);
@@ -24,6 +24,65 @@ void runtime_resolve(Resolve * res, int64_t index) {
     write2(1, name, 8);
     write2(1, "\n", 1);
 
+    PHDR * lib_phdr = (PHDR *)(res->r_lib + 0x40);
+    int ph_size = lib_phdr->p_memsz;
+    int ph_count = ph_size / 0x38;
+    uint64_t dyn_addr = 0;
+    for(int i = 1; i < ph_count; ++i, ++lib_phdr) {
+        if(lib_phdr->p_type == 0x02) {
+            char* a = "DYNAMIC\n";
+            write2(1, a, 8);
+            dyn_addr = lib_phdr->p_offset;
+            break;
+        }
+    }
+
+    dyn_addr += (uint64_t)(res->r_lib);
+    write2(1, "dynamic section addr: ", 22);
+    printAddr(dyn_addr);
+
+    Dynamic * dyn = (Dynamic *)dyn_addr;
+    
+    void * strtab = NULL;
+    Sym  * symtab = NULL;
+
+    for(int i = 0; dyn[i].d_tag != DT_NULL; ++i) {
+        write2(1, "hereee\n", 7);
+        switch(dyn[i].d_tag) {
+            case DT_STRTAB:
+            {
+                strtab = (void *)(res->r_lib + dyn[i].d_un.d_ptr);
+                write2(1, "strtab: ", 8);
+                printAddr(strtab);
+                write2(1, "\n", 1);
+                break;
+            }
+            case DT_SYMTAB:
+            {
+                symtab = (Sym *)(res->r_lib + dyn[i].d_un.d_ptr);
+                break;
+            }
+        }
+    }
+
+    uint64_t sym_count = (uint64_t)((uint64_t)strtab - (uint64_t)symtab) / 24;
+    write2(1, "sym_count: ", 11);
+    printAddr((void *)sym_count);
+    write2(1, "\n", 1);
+
+    for(int i = 0; i < sym_count; ++i, ++symtab) {
+        char * sym_name = (char *)(symtab->st_name + strtab);
+        if(strcmp(name, sym_name) == 0) {
+            write2(1, "found symbol\n", 13);
+            break;
+        }
+    }
+    
+    uint64_t ret = (uint64_t)(res->r_lib) + (symtab->st_value);
+    write2(1, "ret val: ", 9);
+    printAddr((void *)ret);
+    write2(1, "\n", 1);
+    return ret;
 
 }
 
