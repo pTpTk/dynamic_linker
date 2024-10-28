@@ -6,23 +6,11 @@
 extern void _runtime_resolve();
 
 uint64_t runtime_resolve(Resolve * res, int64_t index) {
-    write2(1, "lib @ ", 6);
-    printAddr(res->r_lib);
-    write2(1, "\nindex ", 7);
-    printAddr((void *)index);
-    write2(1, "\n", 1);
-
     uint64_t sym_index = res->r_jmprel[index].r_info;
     sym_index >>= 32;
-    write2(1, "symtab index ", 13);
-    printAddr((void *)index);
-    write2(1, "\n", 1);
 
     uint32_t st_name = res->r_symtab[sym_index].st_name;
     void * name = (void *)(res->r_strtab + st_name);
-    write2(1, "sym name ", 9);
-    write2(1, name, 8);
-    write2(1, "\n", 1);
 
     PHDR * lib_phdr = (PHDR *)(res->r_lib + 0x40);
     int ph_size = lib_phdr->p_memsz;
@@ -30,16 +18,12 @@ uint64_t runtime_resolve(Resolve * res, int64_t index) {
     uint64_t dyn_addr = 0;
     for(int i = 1; i < ph_count; ++i, ++lib_phdr) {
         if(lib_phdr->p_type == 0x02) {
-            char* a = "DYNAMIC\n";
-            write2(1, a, 8);
             dyn_addr = lib_phdr->p_offset;
             break;
         }
     }
 
     dyn_addr += (uint64_t)(res->r_lib);
-    write2(1, "dynamic section addr: ", 22);
-    printAddr(dyn_addr);
 
     Dynamic * dyn = (Dynamic *)dyn_addr;
     
@@ -47,14 +31,10 @@ uint64_t runtime_resolve(Resolve * res, int64_t index) {
     Sym  * symtab = NULL;
 
     for(int i = 0; dyn[i].d_tag != DT_NULL; ++i) {
-        write2(1, "hereee\n", 7);
         switch(dyn[i].d_tag) {
             case DT_STRTAB:
             {
                 strtab = (void *)(res->r_lib + dyn[i].d_un.d_ptr);
-                write2(1, "strtab: ", 8);
-                printAddr(strtab);
-                write2(1, "\n", 1);
                 break;
             }
             case DT_SYMTAB:
@@ -66,29 +46,18 @@ uint64_t runtime_resolve(Resolve * res, int64_t index) {
     }
 
     uint64_t sym_count = (uint64_t)((uint64_t)strtab - (uint64_t)symtab) / 24;
-    write2(1, "sym_count: ", 11);
-    printAddr((void *)sym_count);
-    write2(1, "\n", 1);
 
     for(int i = 0; i < sym_count; ++i, ++symtab) {
         char * sym_name = (char *)(symtab->st_name + strtab);
         if(strcmp(name, sym_name) == 0) {
-            write2(1, "found symbol\n", 13);
             break;
         }
     }
     
     uint64_t ret = (uint64_t)(res->r_lib) + (symtab->st_value);
-    write2(1, "ret val: ", 9);
-    printAddr((void *)ret);
-    write2(1, "\n", 1);
     (res->r_pltgot)[index+3] = ret;
     return ret;
 
-}
-
-void hello() {
-    write2(1, "heeello\n", 8);
 }
 
 int main(int argc, char ** argv, char ** envp) {
@@ -104,16 +73,10 @@ int main(int argc, char ** argv, char ** envp) {
         switch (auxvals[i]) {
             case AT_ENTRY:
                 entry = (void *)val;
-                write2(1, "entry: ", 7);
-                printAddr(entry);
                 break;
             case AT_PHDR:
                 phdr = (PHDR *)val;
                 base = (void *)(val & 0xFFFFFFFFFFFFFF00);
-                write2(1, "phdr: ", 6);
-                printAddr(phdr);
-                write2(1, "base: ", 6);
-                printAddr(base);
                 break;
         }
     }
@@ -125,23 +88,14 @@ int main(int argc, char ** argv, char ** envp) {
     void * dynamic_section_addr = NULL;
     for(int i = 1; i < ph_count; ++i) {
         ++ph_ptr;
-        switch(ph_ptr->p_type) {
-            case 0x03: // INTERP
-                write2(1, "INTERP\n", 7);
-                break;
-            case 0x01: // LOAD
-                write2(1, "LOAD\n", 5);
-                break;
-            case 0x02: // DYNAMIC
-                char* a = "DYNAMIC\n";
-                write2(1, a, 8);
-                dynamic_section_addr = (void *)ph_ptr->p_offset;
+
+        if(ph_ptr->p_type == 0x02) {
+            dynamic_section_addr = (void *)ph_ptr->p_offset;
+            break;
         }
     }
 
-    dynamic_section_addr += (unsigned long long)base;
-    write2(1, "dynamic section addr: ", 22);
-    printAddr(dynamic_section_addr);
+    dynamic_section_addr += (uint64_t)base;
     
     Dynamic * dyn = (Dynamic *)dynamic_section_addr;
     void * strtab = NULL;
@@ -156,17 +110,11 @@ int main(int argc, char ** argv, char ** envp) {
             case DT_STRTAB:
             {
                 strtab = (void *)(base + dyn[i].d_un.d_ptr);
-                write2(1, "strtab: ", 8);
-                printAddr(strtab);
-                write2(1, "\n", 1);
                 break;
             }
             case DT_NEEDED:
             {
                 needed_name = (void *)(dyn[i].d_un.d_ptr);
-                write2(1, "needed: ", 8);
-                printAddr(needed_name);
-                write2(1, "\n", 1);
                 break;
             }
             case DT_PLTGOT:
@@ -192,42 +140,21 @@ int main(int argc, char ** argv, char ** envp) {
         }
     }
 
-    write2(1, "needed: ", 8);
     needed_name += (uint64_t)strtab;
-    printAddr(needed_name);
-    write2(1, "\n", 1);
-    write2(1, needed_name, 20);
-    write2(1, "\n", 1);
 
     // library is in the same dir as the exe for simplicity
     int fd = open2(needed_name, 0, 0);
     uint64_t size = lseek2(fd, 0, 2);
-    write2(1, "lib size is ", 12);
-    printAddr((void *)size);
 
     void * lib = mmap2(NULL, size, PROT_READ | PROT_EXEC, MAP_PRIVATE, fd, 0);
     close2(fd);
 
-    write2(1, "lib: ", 5);
-    printAddr(lib);
-    write2(1, "\n", 1);
-
-    write2(1, "pltgot addr: ", 13);
-    printAddr(pltgot);
-    write2(1, "\n", 1);
-
     Resolve * res = (Resolve *)mmap2(NULL, 32, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
-    write2(1, "res: ", 5);
-    printAddr(res);
-    write2(1, "\n", 1);
     res->r_jmprel = jmprel;
     res->r_symtab = symtab;
     res->r_strtab = strtab;
     res->r_lib = lib;
     res->r_pltgot = pltgot;
-    write2(1, "res->lib: ", 10);
-    printAddr(res->r_lib);
-    write2(1, "\n", 1);
 
     uint64_t * pltgot_entry = pltgot;
     pltgot_entry[1] = (uint64_t)res;
@@ -257,9 +184,7 @@ int main(int argc, char ** argv, char ** envp) {
         "mov $0, %%r13\n\t"
         "mov $0, %%r14\n\t"
         "mov $0, %%r15\n\t"
-        // "ret\n\t"
+        "ret\n\t"
         :: [sp]"r"(sp - 1)
     );
-
-    asm("ret\n\t");
 }
