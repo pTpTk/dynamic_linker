@@ -82,6 +82,7 @@ uint64_t runtime_resolve(Resolve * res, int64_t index) {
     write2(1, "ret val: ", 9);
     printAddr((void *)ret);
     write2(1, "\n", 1);
+    (res->r_pltgot)[index+3] = ret;
     return ret;
 
 }
@@ -223,6 +224,7 @@ int main(int argc, char ** argv, char ** envp) {
     res->r_symtab = symtab;
     res->r_strtab = strtab;
     res->r_lib = lib;
+    res->r_pltgot = pltgot;
     write2(1, "res->lib: ", 10);
     printAddr(res->r_lib);
     write2(1, "\n", 1);

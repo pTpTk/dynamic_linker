@@ -12,17 +12,19 @@
  *
  * _runtime_resolve :
  *   move params to regs
- *   jump runtime_resolve
+ *   push func params
+ *   call runtime_resolve
  *
  * runtime_resolve :
  *   resolve symbol
- *   call func
+ *   ret _runtime_resolve
+ *
+ * _runtime_resolve :
+ *   pop params
+ *   jump func
  *
  * func :
  *   ...
- *   ret runtime_resolve
- *
- * runtime_resolve :
  *   ret main
  */
 
@@ -45,7 +47,12 @@ _runtime_resolve:
 
     call runtime_resolve
 
+    # restore func params and jump to func
+    pop %r9
+    pop %r8
+    pop %rcx
+    pop %rdx
+    pop %rsi
+    pop %rdi
 
-
-    jmp runtime_resolve
- jmp hello
+    jmp *%rax

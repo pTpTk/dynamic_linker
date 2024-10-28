@@ -60,4 +60,5 @@ typedef struct {
     Sym  * r_symtab;
     void * r_strtab;
     void * r_lib;
+    uint64_t * r_pltgot;
 } Resolve;
